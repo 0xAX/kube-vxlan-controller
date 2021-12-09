@@ -104,11 +104,11 @@ handle_call(clear, _From, State) ->
 handle_call({process_event, Id, Event, Config}, _From, State) ->
     case lookup(Id) of
 	{ok, Pid} ->
-	    Pid ! Event;
+            Pid ! Event,
+            {reply, ok, State};
 	_Other ->
-	    start_pod(Id, Event, Config, State)
-    end,
-    {reply, ok, State}.
+            start_pod(Id, Event, Config, State)
+    end.
 
 terminate(_Reason, _State) ->
     ok.
@@ -117,10 +117,11 @@ terminate(_Reason, _State) ->
 %%% Internal functions
 %%%===================================================================
 
-start_pod(Id, Event, Config, _State) ->
+start_pod(Id, Event, Config, State) ->
     case ?PodSup:start_pod(Id, Event, Config) of
 	{ok, Pid} ->
-	    ets:insert_new(?SERVER, {Id, Pid, undefined});
+            ets:insert_new(?SERVER, {Id, Pid, undefined}),
+            {reply, ok, {register, Pid, Id, undefined}, State};
 	Other ->
 	    ?LOG(debug, "failed to start pod for ~p with ~p", [Id, Other]),
 	    ok
